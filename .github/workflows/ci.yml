@@ -3,17 +3,40 @@ on:
   push: { branches: [main] }
   pull_request: { branches: [main] }
 
+# Güvenlik: GITHUB_TOKEN yalnızca read
+permissions:
+  contents: read
+
+# Hız/temizlik: Aynı ref'te eski koşuları iptal et
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
-    env:
-      PYTHONPATH: ${{ github.workspace }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install -r requirements.txt
-      - run: ruff check .
-      - run: black --check .
-      - run: pytest -q
+          cache: "pip"
+          cache-dependency-path: |
+            requirements.txt
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Lint (ruff)
+        run: ruff check .
+
+      - name: Format check (black)
+        run: black --check .
+
+      - name: Tests (pytest)
+        run: pytest -q

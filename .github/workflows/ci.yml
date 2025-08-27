@@ -1,7 +1,9 @@
 name: CI
 on:
-  push: { branches: [main] }
-  pull_request: { branches: [main] }
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -15,14 +17,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      # Block committed .env
+      - name: Guard .env is not tracked
+        run: |
+          if git ls-files --error-unmatch .env >/dev/null 2>&1; then
+            echo "::error::.env is tracked in git; remove it from the repo."
+            exit 1
+          fi
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: pip
+          cache: "pip"
+
       - run: pip install -r requirements.txt
       - run: ruff check .
       - run: black --check .
-      # 👇 pytest öncesi PYTHONPATH
+
       - name: Set PYTHONPATH
         run: echo "PYTHONPATH=$PWD" >> $GITHUB_ENV
+
       - run: pytest -q

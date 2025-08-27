@@ -1,10 +1,11 @@
+import os
+import smtplib
+from email.message import EmailMessage
+
 from fastapi import FastAPI
 from pydantic import BaseModel
-import os
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
-from email.message import EmailMessage
-import smtplib
 
 app = FastAPI(title="ipe API", version="0.1.0")
 
@@ -55,7 +56,11 @@ def list_companies():
         rows = (
             conn.execute(
                 text(
-                    "SELECT id,name,website,country,city FROM companies ORDER BY id DESC"
+                    (
+                        "SELECT id, name, website, country, city "
+                        "FROM companies "
+                        "ORDER BY id DESC"
+                    )
                 )
             )
             .mappings()
@@ -91,9 +96,17 @@ def add_company(c: CompanyIn):
 def daily_report():
     with engine.begin() as conn:
         if IS_SQLITE:
-            q = "SELECT COUNT(*) FROM companies WHERE created_at > datetime('now','-1 day')"
+            q = (
+                "SELECT COUNT(*) "
+                "FROM companies "
+                "WHERE created_at > datetime('now','-1 day')"
+            )
         else:
-            q = "SELECT COUNT(*) FROM companies WHERE created_at > now() - INTERVAL '1 day'"
+            q = (
+                "SELECT COUNT(*) "
+                "FROM companies "
+                "WHERE created_at > now() - INTERVAL '1 day'"
+            )
         count = conn.execute(text(q)).scalar_one_or_none()
     return {"companies_last_24h": int(count or 0)}
 

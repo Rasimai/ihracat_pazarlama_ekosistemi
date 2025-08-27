@@ -1,7 +1,8 @@
 import os
+from datetime import date
+
 import requests
 import streamlit as st
-from datetime import date
 
 API_BASE = os.getenv("API_BASE", "http://localhost:8000")
 

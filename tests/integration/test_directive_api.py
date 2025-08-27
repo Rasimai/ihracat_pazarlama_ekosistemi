@@ -1,5 +1,6 @@
-from api.server import app
 from fastapi.testclient import TestClient
+
+from api.server import app
 
 
 def test_directive_post_returns_message():

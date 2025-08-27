@@ -1,10 +1,10 @@
-from email.message import EmailMessage
-import smtplib
 from fastapi import FastAPI
 from pydantic import BaseModel
 import os
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
+from email.message import EmailMessage
+import smtplib
 
 app = FastAPI(title="ipe API", version="0.1.0")
 
@@ -103,8 +103,6 @@ def manifest():
     return {"name": "ipe", "version": "0.1.0", "assets": []}
 
 
-from email.message import EmailMessage
-import smtplib
 
 
 class EmailReq(BaseModel):

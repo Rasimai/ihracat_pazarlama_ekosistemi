@@ -1,3 +1,5 @@
+from email.message import EmailMessage
+import smtplib
 from fastapi import FastAPI
 from pydantic import BaseModel
 import os

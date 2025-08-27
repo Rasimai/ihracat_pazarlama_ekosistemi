@@ -12,3 +12,4 @@ docker compose up -d --build
 # API: http://localhost:8000
 # MailHog: http://localhost:8025
 - smoke test
+- smoke test

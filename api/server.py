@@ -103,8 +103,6 @@ def manifest():
     return {"name": "ipe", "version": "0.1.0", "assets": []}
 
 
-
-
 class EmailReq(BaseModel):
     to: str
     subject: str

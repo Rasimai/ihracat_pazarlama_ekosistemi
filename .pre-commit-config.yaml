@@ -10,3 +10,20 @@ repos:
     hooks:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: detect-private-key
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]
+
+  # .env dosyasını commit'e engelle
+  - repo: local
+    hooks:
+      - id: forbid-env-file
+        name: forbid committing .env
+        entry: bash -lc 'if git diff --cached --name-only | grep -x ".env" >/dev/null; then echo ".env cannot be committed"; exit 1; fi'
+        language: system
+        pass_filenames: false

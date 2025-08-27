@@ -1,3 +1,5 @@
+[![CI](https://github.com/Rasimai/ihracat_pazarlama_ekosistemi/actions/workflows/ci.yml/badge.svg)](https://github.com/Rasimai/ihracat_pazarlama_ekosistemi/actions/workflows/ci.yml)
+
 ![CI](https://github.com/Rasimai/ihracat_pazarlama_ekosistemi/actions/workflows/ci.yml/badge.svg)
 
 # ihracat_pazarlama_ekosistemi (ipe)

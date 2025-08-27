@@ -1,0 +1,19 @@
+services:
+  app:
+    build: .
+    env_file: .env
+    ports: ["8501:8501", "8000:8000", "8025:8025"]
+    depends_on: [db, mailhog]
+    volumes: ["./state:/app/state"]
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_PASSWORD: ipe
+      POSTGRES_DB: ipe
+    ports: ["5432:5432"]
+    volumes: ["dbdata:/var/lib/postgresql/data"]
+  mailhog:
+    image: mailhog/mailhog
+    ports: ["8025:8025"]
+volumes:
+  dbdata: {}

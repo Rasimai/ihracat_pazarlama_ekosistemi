@@ -37,18 +37,30 @@ with engine.begin() as conn:
     """
     conn.execute(text(ddl_sqlite if IS_SQLITE else ddl_pg))
 
+
 class Directive(BaseModel):
     text: str
+
 
 @app.post("/api/directive")
 def submit_directive(d: Directive):
     return {"message": f"Alındı: {d.text}", "intent_guess": "maps.search.radius"}
 
+
 @app.get("/api/companies")
 def list_companies():
     with engine.begin() as conn:
-        rows = conn.execute(text("SELECT id,name,website,country,city FROM companies ORDER BY id DESC")).mappings().all()
+        rows = (
+            conn.execute(
+                text(
+                    "SELECT id,name,website,country,city FROM companies ORDER BY id DESC"
+                )
+            )
+            .mappings()
+            .all()
+        )
         return [dict(r) for r in rows]
+
 
 class CompanyIn(BaseModel):
     name: str
@@ -57,14 +69,21 @@ class CompanyIn(BaseModel):
     city: str | None = None
     source: str | None = "manual"
 
+
 @app.post("/api/companies")
 def add_company(c: CompanyIn):
     with engine.begin() as conn:
-        conn.execute(text("""
+        conn.execute(
+            text(
+                """
             INSERT INTO companies(name,website,country,city,source)
             VALUES(:name,:website,:country,:city,:source)
-        """), c.model_dump())
+        """
+            ),
+            c.model_dump(),
+        )
     return {"ok": True}
+
 
 @app.get("/api/reports/daily")
 def daily_report():
@@ -76,6 +95,32 @@ def daily_report():
         count = conn.execute(text(q)).scalar_one_or_none()
     return {"companies_last_24h": int(count or 0)}
 
+
 @app.get("/manifest.json")
 def manifest():
-    return {"name": "ipe","version": "0.1.0","assets": []}
+    return {"name": "ipe", "version": "0.1.0", "assets": []}
+
+
+from email.message import EmailMessage
+import smtplib
+
+
+class EmailReq(BaseModel):
+    to: str
+    subject: str
+    body: str
+
+
+@app.post("/api/email/test")
+def email_test(req: EmailReq):
+    host = os.getenv("SMTP_HOST", "mailhog")
+    port = int(os.getenv("SMTP_PORT", "1025"))
+    sender = os.getenv("FROM_EMAIL", "ipe@local")
+    msg = EmailMessage()
+    msg["From"] = sender
+    msg["To"] = req.to
+    msg["Subject"] = req.subject
+    msg.set_content(req.body)
+    with smtplib.SMTP(host, port) as s:
+        s.send_message(msg)
+    return {"ok": True}

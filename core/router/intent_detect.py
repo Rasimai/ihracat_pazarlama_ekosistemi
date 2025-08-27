@@ -7,6 +7,8 @@ INTENTS = {
     "contact.info.find": [],
     "email.compose.personalized": [],
 }
+
+
 def detect_intent(text: str) -> tuple[str, float]:
     t = text.lower()
     if "km" in t and ("ara" in t or "search" in t):

@@ -20,8 +20,7 @@ services:
   mailhog:
     image: mailhog/mailhog
     ports:
-      - "18025:8025"   # Web UI
-    # SMTP konteyner içinden: mailhog:1025
+      - "18025:8025"   # Web UI (SMTP: mailhog:1025)
 
   redis:
     image: redis:7-alpine

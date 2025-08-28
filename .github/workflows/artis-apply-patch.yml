@@ -34,16 +34,23 @@ jobs:
 
       - name: Prepare branch
         run: |
+          set -e
           BRANCH="${{ github.event.inputs.branch }}"
           git checkout -B "$BRANCH"
 
       - name: Apply patch
+        shell: bash
         run: |
-          echo "${{ github.event.inputs.patch }}" > changes.patch
-          git apply --whitespace=fix changes.patch
+          set -euo pipefail
+          cat >/tmp/changes.patch <<'PATCH_EOF'
+${{ github.event.inputs.patch }}
+PATCH_EOF
+          git apply --whitespace=fix /tmp/changes.patch
 
       - name: Commit
+        shell: bash
         run: |
+          set -e
           git config user.name "artis-bot"
           git config user.email "artis-bot@users.noreply.github.com"
           git add -A
@@ -57,10 +64,12 @@ jobs:
         env:
           PAT: ${{ secrets.ARTIS_PAT }}
         run: |
+          set -e
           BRANCH="${{ github.event.inputs.branch }}"
           git push "https://x-access-token:${PAT}@github.com/${{ github.repository }}.git" HEAD:"$BRANCH"
 
       - name: Open PR
+        if: ${{ success() }}
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.ARTIS_PAT }}

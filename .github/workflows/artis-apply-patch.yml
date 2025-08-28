@@ -34,23 +34,16 @@ jobs:
 
       - name: Prepare branch
         run: |
-          set -e
           BRANCH="${{ github.event.inputs.branch }}"
           git checkout -B "$BRANCH"
 
       - name: Apply patch
-        shell: bash
         run: |
-          set -euo pipefail
-          cat >/tmp/changes.patch <<'PATCH_EOF'
-${{ github.event.inputs.patch }}
-PATCH_EOF
-          git apply --whitespace=fix /tmp/changes.patch
+          echo "${{ github.event.inputs.patch }}" > changes.patch
+          git apply --whitespace=fix changes.patch
 
       - name: Commit
-        shell: bash
         run: |
-          set -e
           git config user.name "artis-bot"
           git config user.email "artis-bot@users.noreply.github.com"
           git add -A
@@ -64,12 +57,10 @@ PATCH_EOF
         env:
           PAT: ${{ secrets.ARTIS_PAT }}
         run: |
-          set -e
           BRANCH="${{ github.event.inputs.branch }}"
           git push "https://x-access-token:${PAT}@github.com/${{ github.repository }}.git" HEAD:"$BRANCH"
 
-      - name: Open or ensure PR exists
-        if: ${{ success() }}
+      - name: Open PR
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.ARTIS_PAT }}
@@ -79,20 +70,10 @@ PATCH_EOF
             const head = process.env.BRANCH;
             const base = "main";
             const title = process.env.TITLE;
-
-            async function ensurePR() {
-              const existing = await github.rest.pulls.list({ owner, repo, state: "open", head: `${owner}:${head}` });
-              if (existing.data.length > 0) {
-                core.info("PR already exists: #" + existing.data[0].number);
-                return;
-              }
-              await github.rest.pulls.create({
-                owner, repo, head, base, title,
-                body: "Automated change by Artis"
-              });
-              core.info("PR created.");
-            }
-            await ensurePR();
+            await github.rest.pulls.create({
+              owner, repo, head, base, title,
+              body: "Automated change by Artis"
+            });
         env:
           BRANCH: ${{ github.event.inputs.branch }}
           TITLE: ${{ github.event.inputs.commit_message }}

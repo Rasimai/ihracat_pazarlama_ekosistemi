@@ -1,4 +1,8 @@
+feature/jobs-history
 
+=======
+# Compose v2: version satırı gereksiz; uyarıyı da böylece kaldırıyoruz.
+main
 services:
   db:
     image: postgres:15

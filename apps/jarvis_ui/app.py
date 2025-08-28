@@ -154,3 +154,24 @@ with tab_report:
                         st.dataframe(v, use_container_width=True, hide_index=True)
             else:
                 st.json(data)
+
+# --- IPE: Directive Kuyruğu Formu ---
+import requests  # noqa: E402
+
+st.subheader("Directive Gönder (Queue)")
+with st.form("directive_form"):
+    text = st.text_area("Metin", "ör. teklif taslağı hazırla")
+    notify = st.text_input("E-posta (opsiyonel)", "")
+    ok = st.form_submit_button("Gönder")
+    if ok:
+        try:
+            r = requests.post(
+                "http://localhost:8000/api/directive",
+                json={"text": text, "notify_email": (notify or None)},
+                timeout=10,
+            )
+            st.success(
+                "Kuyruğa eklendi." if r.ok else f"Hata: {r.status_code} {r.text}"
+            )
+        except Exception as e:
+            st.error(f"Hata: {e}")

@@ -11,3 +11,5 @@ docker compose up -d --build
 # UI: http://localhost:8501
 # API: http://localhost:8000
 # MailHog: http://localhost:8025
+- smoke test
+- smoke test

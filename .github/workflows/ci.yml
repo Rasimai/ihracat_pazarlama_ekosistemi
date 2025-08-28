@@ -1,42 +1,41 @@
 name: CI
 on:
-  push: { branches: [main] }
-  pull_request: { branches: [main] }
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
 
-# Güvenlik: GITHUB_TOKEN yalnızca read
-permissions:
-  contents: read
-
-# Hız/temizlik: Aynı ref'te eski koşuları iptal et
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+
+      # Block committed .env
+      - name: Guard .env is not tracked
+        run: |
+          if git ls-files --error-unmatch .env >/dev/null 2>&1; then
+            echo "::error::.env is tracked in git; remove it from the repo."
+            exit 1
+          fi
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: "pip"
-          cache-dependency-path: |
-            requirements.txt
 
-      - name: Install deps
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+      - run: pip install -r requirements.txt
+      - run: ruff check .
+      - run: black --check .
 
-      - name: Lint (ruff)
-        run: ruff check .
+      - name: Set PYTHONPATH
+        run: echo "PYTHONPATH=$PWD" >> $GITHUB_ENV
 
-      - name: Format check (black)
-        run: black --check .
-
-      - name: Tests (pytest)
-        run: pytest -q
+      - run: pytest -q

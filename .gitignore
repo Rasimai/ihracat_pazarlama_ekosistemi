@@ -6,3 +6,5 @@ state/db.sqlite
 .ruff_cache/
 .mypy_cache/
 .venv/
+
+*.bak

@@ -10,6 +10,12 @@ services:
         condition: service_healthy
       mailhog:
         condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/manifest.json >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
 
   db:
     image: postgres:15

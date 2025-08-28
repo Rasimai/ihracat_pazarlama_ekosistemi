@@ -1,4 +1,4 @@
-
+# Compose v2: version satırı gereksiz; uyarıyı da böylece kaldırıyoruz.
 services:
   db:
     image: postgres:15

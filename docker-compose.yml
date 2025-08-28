@@ -1,6 +1,21 @@
+feature/health-and-directive
+services:
+  app:
+    build: .
+    ports:
+      - "8501:8501"
+      - "8000:8000"
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+      mailhog:
+        condition: service_started
+        
 feature/jobs-history
+main
 
-=======
+
 # Compose v2: version satırı gereksiz; uyarıyı da böylece kaldırıyoruz.
 main
 services:
@@ -13,12 +28,18 @@ services:
     ports:
       - "55432:5432"
     healthcheck:
+feature/health-and-directive
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
       test: ["CMD-SHELL", "pg_isready -U ipe -d ipe"]
       interval: 5s
       timeout: 3s
       retries: 30
     volumes:
       - pgdata:/var/lib/postgresql/data
+main
 
   mailhog:
     image: mailhog/mailhog

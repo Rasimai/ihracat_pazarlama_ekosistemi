@@ -10,7 +10,7 @@ on:
       branch:
         description: "Target branch (will be created/updated)"
         required: true
-        default: "artis/update-{{date}}"
+        default: "artis/update-${{ github.run_id }}"
         type: string
       commit_message:
         description: "Commit message"
@@ -34,21 +34,23 @@ jobs:
 
       - name: Prepare branch
         run: |
+          set -e
           BRANCH="${{ github.event.inputs.branch }}"
           git checkout -B "$BRANCH"
 
       - name: Apply patch
         shell: bash
         run: |
-          cat > /tmp/changes.patch <<'PATCH_EOF'
+          set -euo pipefail
+          cat >/tmp/changes.patch <<'PATCH_EOF'
 ${{ github.event.inputs.patch }}
 PATCH_EOF
-          # Güvenli uygulama (boşluk düzeltme)
           git apply --whitespace=fix /tmp/changes.patch
 
       - name: Commit
         shell: bash
         run: |
+          set -e
           git config user.name "artis-bot"
           git config user.email "artis-bot@users.noreply.github.com"
           git add -A
@@ -62,11 +64,12 @@ PATCH_EOF
         env:
           PAT: ${{ secrets.ARTIS_PAT }}
         run: |
+          set -e
           BRANCH="${{ github.event.inputs.branch }}"
           git push "https://x-access-token:${PAT}@github.com/${{ github.repository }}.git" HEAD:"$BRANCH"
 
       - name: Open or ensure PR exists
-        if: ${{ always() }}
+        if: ${{ success() }}
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.ARTIS_PAT }}
@@ -76,6 +79,7 @@ PATCH_EOF
             const head = process.env.BRANCH;
             const base = "main";
             const title = process.env.TITLE;
+
             async function ensurePR() {
               const existing = await github.rest.pulls.list({ owner, repo, state: "open", head: `${owner}:${head}` });
               if (existing.data.length > 0) {

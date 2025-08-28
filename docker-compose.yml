@@ -1,3 +1,4 @@
+feature/health-and-directive
 services:
   app:
     build: .
@@ -10,26 +11,69 @@ services:
         condition: service_healthy
       mailhog:
         condition: service_started
+        
+feature/jobs-history
+main
 
+
+# Compose v2: version satırı gereksiz; uyarıyı da böylece kaldırıyoruz.
+main
+services:
   db:
     image: postgres:15
     environment:
+      POSTGRES_USER: ipe
       POSTGRES_PASSWORD: ipe
-    volumes:
-      - dbdata:/var/lib/postgresql/data
+      POSTGRES_DB: ipe
     ports:
       - "55432:5432"
     healthcheck:
+feature/health-and-directive
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 3s
       retries: 15
+      test: ["CMD-SHELL", "pg_isready -U ipe -d ipe"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+main
 
   mailhog:
     image: mailhog/mailhog
-    platform: linux/amd64
     ports:
-      - "18025:8025"
+      - "18025:8025"   # Web UI (SMTP: mailhog:1025)
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  app:
+    build: .
+    env_file: .env
+    ports:
+      - "8000:8000"
+      - "8501:8501"
+    depends_on:
+      db:
+        condition: service_healthy
+      mailhog:
+        condition: service_started
+      redis:
+        condition: service_started
+
+  worker:
+    build: .
+    env_file: .env
+    command: python -m core.worker
+    depends_on:
+      redis:
+        condition: service_started
+      db:
+        condition: service_healthy
 
 volumes:
-  dbdata: {}
+  pgdata:

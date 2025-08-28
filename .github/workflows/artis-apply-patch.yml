@@ -45,6 +45,12 @@ jobs:
           cat >/tmp/changes.patch <<'PATCH_EOF'
 ${{ github.event.inputs.patch }}
 PATCH_EOF
+          # Güvenlik: boş patch geldiyse hata ver
+          if [ ! -s /tmp/changes.patch ]; then
+            echo "Patch is empty; aborting."
+            exit 1
+          fi
+          # Uygula
           git apply --whitespace=fix /tmp/changes.patch
 
       - name: Commit

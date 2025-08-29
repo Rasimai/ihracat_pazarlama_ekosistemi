@@ -18,10 +18,10 @@ on:
         type: string
         default: "chore: apply patch via workflow"
       branch:
-        description: "Çalışma dalı (opsiyonel)"
+        description: "Çalışma dalı (boş bırakılırsa otomatik isim verilir)"
         required: false
         type: string
-        default: "bot/applypatch-${{ github.run_id }}"
+        default: ""
 
 permissions:
   contents: write
@@ -35,6 +35,18 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Değişkenleri hazırla
+        id: vars
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Kullanıcı input'u varsa onu al; yoksa GITHUB_RUN_ID ile üret
+          BRANCH_INPUT="${{ inputs.branch }}"
+          if [ -z "$BRANCH_INPUT" ]; then
+            BRANCH_INPUT="bot/applypatch-${GITHUB_RUN_ID}"
+          fi
+          echo "branch=$BRANCH_INPUT" >> "$GITHUB_OUTPUT"
+
       - name: Yamayı çöz ve uygula
         shell: bash
         run: |
@@ -42,14 +54,14 @@ jobs:
           echo "${{ inputs.patch_b64 }}" | base64 -d > /tmp/patch.diff
           git config user.name "artis-bot"
           git config user.email "bot@local"
-          git switch -c "${{ inputs.branch }}"
+          git switch -c "${{ steps.vars.outputs.branch }}"
           git apply --whitespace=fix /tmp/patch.diff
 
       - name: PR oluştur
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ inputs.branch }}
+          branch: ${{ steps.vars.outputs.branch }}
           commit-message: ${{ inputs.commit_message }}
           title: ${{ inputs.pr_title }}
           body: |

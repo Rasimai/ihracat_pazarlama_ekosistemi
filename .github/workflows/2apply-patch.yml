@@ -1,89 +1,68 @@
-diff --git a/.github/workflows/00-smoke-runner.yml b/.github/workflows/00-smoke-runner.yml
-new file mode 100644
-index 0000000..7b1c0af
---- /dev/null
-+++ b/.github/workflows/00-smoke-runner.yml
-@@ -0,0 +1,34 @@
-+name: Runner Smoke (local)
-+on:
-+  workflow_dispatch:
-+jobs:
-+  info:
-+    runs-on: [self-hosted, local]
-+    permissions: {}
-+    steps:
-+      - uses: actions/checkout@v4
-+      - name: System info
-+        run: |
-+          echo "User: $(whoami)"
-+          echo "Hostname: $(hostname)"
-+          echo "Uptime: $(uptime)"
-+          echo "Kernel/uname:"
-+          uname -a
-+          echo "macOS sürümü (varsa):"
-+          sw_vers 2>/dev/null || true
-+          echo "CPU:"
-+          sysctl -n machdep.cpu.brand_string 2>/dev/null || true
-+      - name: Git status
-+        run: |
-+          git status || true
-+      - name: Docker durum
-+        run: |
-+          command -v docker >/dev/null && docker ps || echo "Docker bulunamadı (normal olabilir)."
-+
-diff --git a/.github/workflows/ops-shell.yml b/.github/workflows/ops-shell.yml
-new file mode 100644
-index 0000000..ab013cd
---- /dev/null
-+++ b/.github/workflows/ops-shell.yml
-@@ -0,0 +1,65 @@
-+name: Ops Shell (limited)
-+on:
-+  workflow_dispatch:
-+    inputs:
-+      command:
-+        description: "Çalıştırılacak komut (whitelist)"
-+        required: true
-+        type: choice
-+        options:
-+          - uptime
-+          - df
-+          - list
-+          - processes
-+          - docker-ps
-+permissions: {}
-+jobs:
-+  exec:
-+    runs-on: [self-hosted, local]
-+    steps:
-+      - name: Komutu çalıştır
-+        id: run
-+        shell: bash
-+        run: |
-+          set -euo pipefail
-+          cmd="${{ github.event.inputs.command }}"
-+          case "$cmd" in
-+            uptime)
-+              echo ">>> uptime"; uptime
-+              ;;
-+            df)
-+              echo ">>> df -h"; df -h
-+              ;;
-+            list)
-+              echo ">>> ls -la (home)"; ls -la "$HOME"
-+              ;;
-+            processes)
-+              echo ">>> ps aux | head -n 30"; ps aux | head -n 30
-+              ;;
-+            docker-ps)
-+              echo ">>> docker ps"; docker ps
-+              ;;
-+            *)
-+              echo "Komut whitelist'te değil."; exit 2
-+              ;;
-+          esac | tee ops-output.txt
-+      - name: Çıktıyı artefact olarak yükle
-+        uses: actions/upload-artifact@v4
-+        with:
-+          name: ops-output
-+          path: ops-output.txt
+name: Apply Patch (self-hosted)
+
+on:
+  workflow_dispatch:
+    inputs:
+      patch_b64:
+        description: "Base64 olarak kodlanmış unified diff (git patch)"
+        required: true
+        type: string
+      pr_title:
+        description: "PR başlığı"
+        required: true
+        type: string
+        default: "Apply patch via workflow"
+      commit_message:
+        description: "Commit mesajı"
+        required: true
+        type: string
+        default: "chore: apply patch via workflow"
+      branch:
+        description: "Çalışma dalı (boş bırakılırsa otomatik isim verilir)"
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  apply:
+    runs-on: [self-hosted, local]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Değişkenleri hazırla
+        id: vars
+        shell: bash
+        run: |
+          set -euo pipefail
+          BRANCH_INPUT="${{ inputs.branch }}"
+          if [ -z "$BRANCH_INPUT" ]; then
+            BRANCH_INPUT="bot/applypatch-${GITHUB_RUN_ID}"
+          fi
+          echo "branch=$BRANCH_INPUT" >> "$GITHUB_OUTPUT"
+
+      - name: Yamayı çöz ve uygula
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "${{ inputs.patch_b64 }}" | base64 -d > /tmp/patch.diff
+          git config user.name "artis-bot"
+          git config user.email "bot@local"
+          git switch -c "${{ steps.vars.outputs.branch }}"
+          git apply --whitespace=fix /tmp/patch.diff
+
+      - name: PR oluştur
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ steps.vars.outputs.branch }}
+          commit-message: ${{ inputs.commit_message }}
+          title: ${{ inputs.pr_title }}
+          body: |
+            Applied patch via workflow.
+            Triggered by: ${{ github.actor }}

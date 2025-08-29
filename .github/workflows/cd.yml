@@ -9,9 +9,14 @@ on:
       - "requirements.txt"
       - "pyproject.toml"
       - ".github/workflows/cd.yml"
+
 permissions:
   contents: read
   packages: write
+
+env:
+  ENABLE_DEPLOY: ${{ vars.ENABLE_DEPLOY }} # Settings → Actions → Variables
+
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
@@ -34,8 +39,10 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}:latest
             ghcr.io/${{ github.repository }}:${{ github.sha }}
+
   deploy:
     needs: build-and-push
+    if: ${{ env.ENABLE_DEPLOY == 'true' }}
     runs-on: [ self-hosted, prod ]
     steps:
       - name: Pull & restart container (no compose)

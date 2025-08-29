@@ -1,0 +1,18 @@
+name: test
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Quick test (pytest varsa çalıştır, yoksa geç)
+        run: |
+          if [ -d tests ] || ls -1 *.test.py 2>/dev/null; then
+            python -m pip install --upgrade pip
+            pip install pytest
+            pytest -q
+          else
+            echo "no tests, ok"

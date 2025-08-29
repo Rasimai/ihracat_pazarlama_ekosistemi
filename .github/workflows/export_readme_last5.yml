@@ -1,0 +1,46 @@
+name: Export README last 5 lines and commit
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - README.md
+      - .github/workflows/export_readme_last5.yml
+  workflow_dispatch:
+jobs:
+  export-and-commit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Extract last 5 lines
+        run: |
+          mkdir -p artifacts
+          if [ -f README.md ]; then
+            tail -n 5 README.md > artifacts/README_last5.txt
+          else
+            echo "README.md not found" > artifacts/README_last5.txt
+          fi
+      - name: Commit and push if changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet -- artifacts/README_last5.txt; then
+            echo "No change"
+          else
+            git config user.name "artis-bot"
+            git config user.email "artis-bot@users.noreply.github.com"
+            git add artifacts/README_last5.txt
+            git commit -m "chore: update artifacts/README_last5.txt from README tail"
+            git remote set-url origin https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git
+            git push origin HEAD:${{ github.ref_name }}
+          fi
+      - name: Upload artifact (optional)
+        uses: actions/upload-artifact@v4
+        with:
+          name: readme_last5
+          path: artifacts/README_last5.txt
+          if-no-files-found: error

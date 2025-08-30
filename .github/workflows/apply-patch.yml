@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       patch_b64:
-        description: "Base64 olarak kodlanmış unified diff (git patch)"
+        description: "Base64 kodlu unified diff (git patch)"
         required: true
         type: string
       pr_title:
@@ -18,7 +18,7 @@ on:
         type: string
         default: "chore: apply patch via workflow"
       branch:
-        description: "Çalışma dalı (boş bırakılırsa otomatik isim verilir)"
+        description: "Çalışma dalı (boşsa otomatik isim verilir)"
         required: false
         type: string
         default: ""
@@ -26,6 +26,10 @@ on:
 permissions:
   contents: write
   pull-requests: write
+
+concurrency:
+  group: apply-patch-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   apply:
@@ -40,22 +44,51 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # Kullanıcı input'u varsa onu al; yoksa GITHUB_RUN_ID ile üret
           BRANCH_INPUT="${{ inputs.branch }}"
           if [ -z "$BRANCH_INPUT" ]; then
             BRANCH_INPUT="bot/applypatch-${GITHUB_RUN_ID}"
           fi
           echo "branch=$BRANCH_INPUT" >> "$GITHUB_OUTPUT"
+          echo "workspace=$GITHUB_WORKSPACE" >> "$GITHUB_OUTPUT"
 
-      - name: Yamayı çöz ve uygula
+      - name: Patch'i doğrula ve decode et
+        id: decode
         shell: bash
         run: |
           set -euo pipefail
           echo "${{ inputs.patch_b64 }}" | base64 -d > /tmp/patch.diff
+
+          # Unified diff kontrolü
+          if ! head -n1 /tmp/patch.diff | grep -Eq '^diff --git|^From '; then
+            echo "HATA: Bu unified diff gibi görünmüyor. İlk satır:"
+            head -n1 /tmp/patch.diff || true
+            exit 2
+          fi
+
+          echo "---- Patch özetleri ----"
+          grep -E '^diff --git ' /tmp/patch.diff || echo "(özet bulunamadı)"
+
+      - name: Git'i güvenli ayarla
+        shell: bash
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git config user.name "artis-bot"
           git config user.email "bot@local"
+
+      - name: Dal oluştur ve yamayı uygula
+        shell: bash
+        run: |
+          set -euo pipefail
           git switch -c "${{ steps.vars.outputs.branch }}"
           git apply --whitespace=fix /tmp/patch.diff
+
+      - name: Uygulama sonrası durum
+        shell: bash
+        run: |
+          echo "---- Git status ----"
+          git status
+          echo "---- Değiştirilen dosyalar ----"
+          git diff --name-only --staged || git ls-files -m || true
 
       - name: PR oluştur
         uses: peter-evans/create-pull-request@v6
@@ -67,3 +100,11 @@ jobs:
           body: |
             Applied patch via workflow.
             Triggered by: ${{ github.actor }}
+
+      - name: Patch artefact (her ihtimale karşı)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: applied-patch
+          path: /tmp/patch.diff
+          if-no-files-found: ignore

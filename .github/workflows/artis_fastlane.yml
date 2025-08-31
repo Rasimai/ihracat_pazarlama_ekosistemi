@@ -16,7 +16,7 @@ jobs:
       - name: Merge if commenter is repo owner
         uses: actions/github-script@v7
         with:
-          github-token: ${{ github.token }}
+          # Bilerek token vermiyoruz; varsayılan GITHUB_TOKEN kullanılacak
           script: |
             const comment = context.payload.comment;
             const owner = context.repo.owner;

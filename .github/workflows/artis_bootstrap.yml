@@ -37,7 +37,7 @@ jobs:
                 - name: Merge if commenter is repo owner
                   uses: actions/github-script@v7
                   with:
-                    github-token: ${{ secrets['ARTIS_PAT'] }}
+                    github-token: ${{ github.token }}
                     script: |
                       const comment = context.payload.comment;
                       const owner = context.repo.owner;
@@ -69,17 +69,17 @@ jobs:
           git commit -m "chore(ci): add artis fastlane (comment 'Onayla' to merge PRs)"
           echo "BRANCH=$BR" >> $GITHUB_ENV
 
-      - name: Push with PAT
+      - name: Push with GITHUB_TOKEN
         env:
-          TOKEN: ${{ secrets['ARTIS_PAT'] }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           REPO="${{ github.repository }}"
-          git push "https://x-access-token:${TOKEN}@github.com/${REPO}.git" "HEAD:${BRANCH}"
+          git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO}.git" "HEAD:${BRANCH}"
 
       - name: Open PR
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets['ARTIS_PAT'] }}
+          github-token: ${{ github.token }}
           script: |
             const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
             const head = process.env.BRANCH;

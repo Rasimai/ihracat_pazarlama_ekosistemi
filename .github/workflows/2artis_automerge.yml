@@ -1,0 +1,55 @@
+name: artis-automerge (Onayla'sız)
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  check_suite:
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+
+jobs:
+  auto_merge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: PR ve kontrolleri değerlendir
+        id: ctx
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner, repo = context.repo.repo;
+            let pr = context.payload.pull_request;
+            if (!pr && context.payload.check_suite) {
+              const head = context.payload.check_suite.head_branch;
+              const prs = await github.rest.pulls.list({ owner, repo, state: 'open', head: `${owner}:${head}` });
+              if (prs.data.length) pr = prs.data[0];
+            }
+            if (!pr) { core.info('İlişkili PR yok.'); return; }
+
+            const isOwner = pr.user.login === owner;
+            const isArtisBranch = (pr.head.ref || '').startsWith('artis/');
+            const sha = pr.head.sha;
+
+            const status = await github.rest.repos.getCombinedStatusForRef({ owner, repo, ref: sha });
+            const statusesOk = (status.data.state === 'success');
+
+            const checks = await github.rest.checks.listForRef({ owner, repo, ref: sha });
+            const checksOk = checks.data.total_count === 0 ||
+              checks.data.check_runs.every(r => ['success','neutral','skipped'].includes(r.conclusion || 'neutral'));
+
+            core.setOutput('pr', pr.number.toString());
+            core.setOutput('merge_ok', (statusesOk && checksOk && (isOwner || isArtisBranch)) ? 'true' : 'false');
+
+      - name: Merge et (squash)
+        if: ${{ steps.ctx.outputs.merge_ok == 'true' && steps.ctx.outputs.pr != '' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner, repo = context.repo.repo;
+            const pull_number = Number('${{ steps.ctx.outputs.pr }}');
+            await github.request('PUT /repos/{owner}/{repo}/pulls/{pull_number}/merge', {
+              owner, repo, pull_number, merge_method: 'squash'
+            });
+            core.info(`PR #${pull_number} otomatik merge edildi.`)

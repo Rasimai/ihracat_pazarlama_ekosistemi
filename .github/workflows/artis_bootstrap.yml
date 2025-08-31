@@ -1,0 +1,94 @@
+name: artis-bootstrap (fastlane'ı PR ile ekle)
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  add_fastlane:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (no default token)
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Add fastlane workflow file
+        run: |
+          mkdir -p .github/workflows
+          cat > .github/workflows/artis_fastlane.yml <<'YAML'
+          name: artis-fastlane (PR Onayla ile Merge)
+
+          on:
+            issue_comment:
+              types: [created]
+
+          permissions:
+            pull-requests: write
+            contents: write
+
+          jobs:
+            merge_on_approve:
+              if: ${{ github.event.issue.pull_request && (contains(github.event.comment.body, 'Onayla') || contains(github.event.comment.body, '/apply')) }}
+              runs-on: ubuntu-latest
+              steps:
+                - name: Merge if commenter is repo owner
+                  uses: actions/github-script@v7
+                  with:
+                    github-token: ${{ secrets.ARTIS_PAT }}
+                    script: |
+                      const comment = context.payload.comment;
+                      const owner = context.repo.owner;
+                      const repo = context.repo.repo;
+                      if (comment.user.login !== owner) {
+                        core.setFailed(`Sadece repo sahibi (${owner}) 'Onayla' ile merge edebilir.`);
+                        return;
+                      }
+                      const prNumber = context.payload.issue.number;
+                      await github.request('PUT /repos/{owner}/{repo}/pulls/{pull_number}/merge', {
+                        owner,
+                        repo,
+                        pull_number: prNumber,
+                        merge_method: 'squash'
+                      });
+                      core.info(`PR #${prNumber} merged.`);
+          YAML
+
+      - name: Configure git author
+        run: |
+          git config user.name "artis-bot"
+          git config user.email "artis-bot@users.noreply.github.com"
+
+      - name: Create branch, commit
+        run: |
+          BR="artis/fastlane-setup"
+          git checkout -b "$BR"
+          git add .github/workflows/artis_fastlane.yml
+          git commit -m "chore(ci): add artis fastlane (comment 'Onayla' to merge PRs)"
+          echo "BRANCH=$BR" >> $GITHUB_ENV
+
+      - name: Push with PAT
+        env:
+          TOKEN: ${{ secrets.ARTIS_PAT }}
+        run: |
+          REPO="${{ github.repository }}"
+          git push "https://x-access-token:${TOKEN}@github.com/${REPO}.git" "HEAD:${BRANCH}"
+
+      - name: Open PR
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.ARTIS_PAT }}
+          script: |
+            const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
+            const head = process.env.BRANCH;
+            const base = 'main';
+            const title = 'Add artis fastlane workflow';
+            const body = 'Bu PR, PR yorumuna **Onayla** yazınca otomatik squash merge yapan fastlane akışını ekler.';
+            try {
+              const { data: pr } = await github.request('POST /repos/{owner}/{repo}/pulls', { owner, repo, head, base, title, body });
+              core.info(`PR opened: #${pr.number}`);
+            } catch (e) {
+              core.warning(`PR oluşturulamadı: ${e.message}`);
+            }

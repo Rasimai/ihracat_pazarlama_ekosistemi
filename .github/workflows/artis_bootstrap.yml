@@ -37,7 +37,7 @@ jobs:
                 - name: Merge if commenter is repo owner
                   uses: actions/github-script@v7
                   with:
-                    github-token: ${{ secrets.ARTIS_PAT }}
+                    github-token: ${{ secrets['ARTIS_PAT'] }}
                     script: |
                       const comment = context.payload.comment;
                       const owner = context.repo.owner;
@@ -71,7 +71,7 @@ jobs:
 
       - name: Push with PAT
         env:
-          TOKEN: ${{ secrets.ARTIS_PAT }}
+          TOKEN: ${{ secrets['ARTIS_PAT'] }}
         run: |
           REPO="${{ github.repository }}"
           git push "https://x-access-token:${TOKEN}@github.com/${REPO}.git" "HEAD:${BRANCH}"
@@ -79,7 +79,7 @@ jobs:
       - name: Open PR
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.ARTIS_PAT }}
+          github-token: ${{ secrets['ARTIS_PAT'] }}
           script: |
             const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
             const head = process.env.BRANCH;

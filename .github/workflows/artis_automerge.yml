@@ -1,0 +1,96 @@
+name: artis-automerge (Onayla'sız)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  check_suite:
+    types: [completed]
+  workflow_run:
+    workflows: ["CI"]   # CI workflow'un adı farklıysa bu bölümü kaldırabilirsin
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+
+jobs:
+  auto_merge:
+    runs-on: ubuntu-latest
+    # Şart: PR açık olmalı, PR sahibi repo owner ya da kaynak dal 'artis/' ile başlamalı
+    if: >
+      github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success') &&
+      true
+    steps:
+      - name: Context hazırla
+        id: ctx
+        uses: actions/github-script@v7
+        with:
+          # Varsayılan GITHUB_TOKEN kullanılacak
+          script: |
+            const owner = context.repo.owner;
+            // PR nesnesini yükle
+            let prNumber;
+            if (context.payload.pull_request) {
+              prNumber = context.payload.pull_request.number;
+            } else if (context.payload.check_suite) {
+              // check_suite -> ilgili PR'ı bul
+              const { head_branch } = context.payload.check_suite;
+              const prs = await github.rest.pulls.list({
+                owner, repo: context.repo.repo, state: 'open', head: `${owner}:${head_branch}`
+              });
+              if (prs.data.length) prNumber = prs.data[0].number;
+            }
+            core.setOutput('pr', prNumber || '');
+
+            if (!prNumber) {
+              core.info('İlişkili bir PR bulunamadı, çıkılıyor.');
+              return;
+
+            }
+            const { data: pr } = await github.rest.pulls.get({
+              owner, repo: context.repo.repo, pull_number: prNumber
+            });
+
+            const isOwner = pr.user.login === owner;
+            const headRef = pr.head.ref || '';
+            const isArtisBranch = headRef.startsWith('artis/');
+            core.setOutput('is_owner', isOwner ? 'true' : 'false');
+            core.setOutput('is_artis_branch', isArtisBranch ? 'true' : 'false');
+
+            // Gerekli kontroller geçti mi?
+            // 1) Combined status (eski API)
+            const { data: status } = await github.rest.repos.getCombinedStatusForRef({
+              owner, repo: context.repo.repo, ref: pr.head.sha
+            });
+            const statusesOk = (status.state === 'success');
+
+            // 2) Check runs (yeni API)
+            const checks = await github.rest.checks.listForRef({
+              owner, repo: context.repo.repo, ref: pr.head.sha
+            });
+            const checksOk = checks.data.total_count === 0 ||
+              checks.data.check_runs.every(r => ['success', 'neutral', 'skipped'].includes(r.conclusion || 'neutral'));
+
+            core.setOutput('checks_ok', (statusesOk && checksOk) ? 'true' : 'false');
+      - name: Koşulları değerlendir
+        id: decide
+        run: |
+          echo "is_owner=${{ steps.ctx.outputs.is_owner }}" >> $GITHUB_OUTPUT
+          echo "is_artis_branch=${{ steps.ctx.outputs.is_artis_branch }}" >> $GITHUB_OUTPUT
+          echo "checks_ok=${{ steps.ctx.outputs.checks_ok }}" >> $GITHUB_OUTPUT
+
+      - name: Merge et (squash)
+        if: ${{ steps.ctx.outputs.pr != '' && steps.decide.outputs.checks_ok == 'true' && (steps.decide.outputs.is_owner == 'true' || steps.decide.outputs.is_artis_branch == 'true') }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner, repo = context.repo.repo;
+            const prNumber = Number('${{ steps.ctx.outputs.pr }}');
+            try {
+              await github.request('PUT /repos/{owner}/{repo}/pulls/{pull_number}/merge', {
+                owner, repo, pull_number: prNumber, merge_method: 'squash'
+              });
+              core.info(`PR #${prNumber} otomatik merge edildi.`);
+            } catch (e) {
+              core.setFailed(`Merge başarısız: ${e.message}`);

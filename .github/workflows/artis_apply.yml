@@ -1,0 +1,130 @@
+name: artis-apply (tek tık değişiklik + PR + otomatik merge)
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "edit: tek dosya düzenle | patch: base64 unified diff uygula"
+        required: true
+        default: "edit"
+        type: choice
+        options: ["edit", "patch"]
+      file_path:
+        description: "mode=edit için dosya yolu (örn: README.md)"
+        required: false
+        type: string
+      edit_action:
+        description: "append | replace"
+        required: false
+        default: "append"
+        type: choice
+        options: ["append", "replace"]
+      content:
+        description: "mode=edit için eklenecek/içerik (çok satır destekli)"
+        required: false
+        type: string
+      patch_b64:
+        description: "mode=patch için base64 encoded unified diff"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Aktör doğrulaması (sadece repo owner)
+        uses: actions/github-script@v7
+        with:
+          script: |
+            if (context.actor !== context.repo.owner) {
+              core.setFailed(`Sadece repo sahibi tetikleyebilir. Aktör: ${context.actor}`);
+            }
+
+      - name: Checkout (no default token persisted)
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Mode=edit uygula
+        if: ${{ inputs.mode == 'edit' }}
+        shell: bash
+        run: |
+          if [ -z "${{ inputs.file_path }}" ]; then
+            echo "file_path gerekli"; exit 1; fi
+          if [ "${{ inputs.edit_action }}" = "replace" ]; then
+            printf "%s" "${{ inputs.content }}" > "${{ inputs.file_path }}"
+          else
+            touch "${{ inputs.file_path }}"
+            printf "\n%s\n" "${{ inputs.content }}" >> "${{ inputs.file_path }}"
+          fi
+
+      - name: Mode=patch uygula
+        if: ${{ inputs.mode == 'patch' }}
+        shell: bash
+        run: |
+          if [ -z "${{ inputs.patch_b64 }}" ]; then
+            echo "patch_b64 gerekli"; exit 1; fi
+          echo "${{ inputs.patch_b64 }}" | base64 -d > /tmp/changes.patch
+          git apply --whitespace=fix /tmp/changes.patch
+
+      - name: Git author
+        run: |
+          git config user.name "artis-bot"
+          git config user.email "artis-bot@users.noreply.github.com"
+
+      - name: Branch ve commit
+        run: |
+          BR="artis/apply-$(date +%Y%m%d%H%M%S)"
+          git checkout -b "$BR"
+          git add -A
+          git commit -m "chore(artis): apply change via workflow (mode=${{ inputs.mode }})"
+          echo "BRANCH=$BR" >> $GITHUB_ENV
+
+      - name: Push
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          REPO="${{ github.repository }}"
+          git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO}.git" "HEAD:${BRANCH}"
+
+      - name: PR aç
+        id: openpr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
+            const head = process.env.BRANCH;
+            const base = 'main';
+            const title = `Artis apply (${process.env.GITHUB_RUN_ID})`;
+            const body  = "Automated change by Artis.";
+            const { data: pr } = await github.request('POST /repos/{owner}/{repo}/pulls', { owner, repo, head, base, title, body });
+            core.setOutput('number', pr.number);
+
+      - name: Checks bitti mi? (hemen merge denemesi)
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
+            const pull_number = Number('${{ steps.openpr.outputs.number }}');
+            const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number });
+            const sha = pr.head.sha;
+
+            const status = await github.rest.repos.getCombinedStatusForRef({ owner, repo, ref: sha });
+            const statusesOk = (status.data.state === 'success');
+
+            const checks = await github.rest.checks.listForRef({ owner, repo, ref: sha });
+            const checksOk = checks.data.total_count === 0 ||
+              checks.data.check_runs.every(r => ['success','neutral','skipped'].includes(r.conclusion || 'neutral'));
+
+            if (!(statusesOk && checksOk)) {
+              core.warning('Checks hazır değil; artis-automerge sonra tamamlayacak.');
+              return;
+            }
+            await github.request('PUT /repos/{owner}/{repo}/pulls/{pull_number}/merge', {
+              owner, repo, pull_number, merge_method: 'squash'
+            });
+            core.info(`PR #${pull_number} otomatik merge edildi.`)

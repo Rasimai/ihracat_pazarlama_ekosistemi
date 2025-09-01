@@ -1,22 +1,13 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/bash
 
-python - <<'PY'
-import os, time, sys
-import psycopg
-url = os.getenv("DATABASE_URL", "sqlite:///state/db.sqlite")
-if url.startswith("postgres"):
-    for i in range(60):
-        try:
-            with psycopg.connect(os.getenv("DATABASE_URL").replace("+psycopg",""), connect_timeout=3) as _:
-                break
-        except Exception:
-            time.sleep(1)
-    else:
-        sys.exit("DB not ready")
-PY
+echo Starting Jarvis System...
 
-alembic -c alembic.ini upgrade head
+# API başlat
+uvicorn app.main:app --reload --port 8000 &
 
-uvicorn api.server:app --host 0.0.0.0 --port 8000 &
-exec streamlit run apps/jarvis_ui/app.py --server.port 8501 --server.address 0.0.0.0
+# UI başlat
+streamlit run apps/jarvis_ui.py &
+
+echo Jarvis System Started!
+echo API: http://localhost:8000
+echo UI: http://localhost:8501

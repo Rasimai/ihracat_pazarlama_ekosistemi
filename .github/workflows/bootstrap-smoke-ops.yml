@@ -136,11 +136,12 @@ jobs:
                     path: ops-output.txt
           YAML
 
-      - name: Commit ve PR oluştur
+            - name: Commit ve PR oluştur
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           branch: ${{ steps.vars.outputs.branch }}
+          base: main
           commit-message: ${{ inputs.commit_message }}
           title: ${{ inputs.pr_title }}
           body: |

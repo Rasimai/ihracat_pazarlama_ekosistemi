@@ -14,4 +14,8 @@ docker compose up -d --build
 - smoke test
 - smoke test
 
+artis/apply-20250901065352
+\n---\nArtis test satırı (otomatik PR + merge)
+
 Rasim
+main

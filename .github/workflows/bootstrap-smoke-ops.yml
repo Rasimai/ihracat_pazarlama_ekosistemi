@@ -1,0 +1,148 @@
+name: Bootstrap Smoke & Ops (one-shot)
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_title:
+        description: "PR başlığı"
+        required: true
+        type: string
+        default: "chore: add smoke & ops shell"
+      commit_message:
+        description: "Commit mesajı"
+        required: true
+        type: string
+        default: "chore: add smoke & ops shell"
+      branch:
+        description: "Çalışma dalı (boşsa otomatik)"
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bootstrap:
+    runs-on: [self-hosted, local]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Değişkenleri hazırla
+        id: vars
+        shell: bash
+        run: |
+          set -euo pipefail
+          BRANCH_INPUT="${{ inputs.branch }}"
+          if [ -z "$BRANCH_INPUT" ]; then
+            BRANCH_INPUT="bot/bootstrap-smoke-ops-${GITHUB_RUN_ID}"
+          fi
+          echo "branch=$BRANCH_INPUT" >> "$GITHUB_OUTPUT"
+          git config user.name "artis-bot"
+          git config user.email "bot@local"
+
+      - name: Dalı oluştur
+        shell: bash
+        run: |
+          set -euo pipefail
+          git switch -c "${{ steps.vars.outputs.branch }}"
+
+      - name: Dosyaları yaz (00-smoke-runner.yml)
+        shell: bash
+        run: |
+          mkdir -p .github/workflows
+          cat > .github/workflows/00-smoke-runner.yml <<'YAML'
+          name: Runner Smoke (local)
+          on:
+            workflow_dispatch:
+          jobs:
+            info:
+              runs-on: [self-hosted, local]
+              permissions: {}
+              steps:
+                - uses: actions/checkout@v4
+                - name: System info
+                  run: |
+                    echo "User: $(whoami)"
+                    echo "Hostname: $(hostname)"
+                    echo "Uptime: $(uptime)"
+                    echo "Kernel/uname:"
+                    uname -a
+                    echo "macOS sürümü (varsa):"
+                    sw_vers 2>/dev/null || true
+                    echo "CPU:"
+                    sysctl -n machdep.cpu.brand_string 2>/dev/null || true
+                - name: Docker durum
+                  run: |
+                    command -v docker >/dev/null && docker ps || echo "Docker bulunamadı (normal olabilir)."
+          YAML
+
+      - name: Dosyaları yaz (ops-shell.yml)
+        shell: bash
+        run: |
+          cat > .github/workflows/ops-shell.yml <<'YAML'
+          name: Ops Shell (limited)
+          on:
+            workflow_dispatch:
+              inputs:
+                command:
+                  description: "Çalıştırılacak komut (whitelist)"
+                  required: true
+                  type: choice
+                  options:
+                    - uptime
+                    - df
+                    - list
+                    - processes
+                    - docker-ps
+          permissions: {}
+          jobs:
+            exec:
+              runs-on: [self-hosted, local]
+              steps:
+                - name: Komutu çalıştır
+                  id: run
+                  shell: bash
+                  run: |
+                    set -euo pipefail
+                    cmd="${{ github.event.inputs.command }}"
+                    case "$cmd" in
+                      uptime)
+                        echo ">>> uptime"; uptime
+                        ;;
+                      df)
+                        echo ">>> df -h"; df -h
+                        ;;
+                      list)
+                        echo ">>> ls -la (home)"; ls -la "$HOME"
+                        ;;
+                      processes)
+                        echo ">>> ps aux | head -n 30"; ps aux | head -n 30
+                        ;;
+                      docker-ps)
+                        echo ">>> docker ps"; docker ps
+                        ;;
+                      *)
+                        echo "Komut whitelist'te değil."; exit 2
+                        ;;
+                    esac | tee ops-output.txt
+                - name: Çıktıyı artefact olarak yükle
+                  uses: actions/upload-artifact@v4
+                  with:
+                    name: ops-output
+                    path: ops-output.txt
+          YAML
+
+      - name: Commit ve PR oluştur
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ steps.vars.outputs.branch }}
+          commit-message: ${{ inputs.commit_message }}
+          title: ${{ inputs.pr_title }}
+          body: |
+            Bootstrap added smoke & ops shell workflows.
+            Triggered by: ${{ github.actor }}

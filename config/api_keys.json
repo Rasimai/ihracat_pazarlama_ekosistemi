@@ -1,0 +1,11 @@
+{
+    "_INFO": {
+        "description": "Enhanced Key Manager - Ek API keys",
+        "note": "Bu dosyadaki key'ler .env dosyas\u0131ndakileri tamamlar"
+    },
+    "hunter_io_api_key": "",
+    "google_vision_credentials_path": "",
+    "redis_url": "redis://localhost:6379",
+    "performance_cache_ttl": "3600",
+    "enhanced_features_enabled": "true"
+}

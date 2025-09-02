@@ -1,1 +1,19 @@
-{ "name": "ipe", "version": "0.1.0", "notes": "Initial MVP; UI+API single image", "assets": [] }
+{
+  "version": "1.0.0",
+  "name": "Jarvis Suite",
+  "description": "Complete Jarvis Orchestrator System",
+  "zip_url": "https://github.com/Rasimai/jarvis-suite/releases/download/v1.0.0/jarvis_v1.0.0.zip",
+  "size": "2.5 MB",
+  "notes": "Initial release with PMBA, IKBA, CIKTA agents",
+  "changelog": [
+    "Added skill registry system",
+    "Implemented alt assistant architecture",
+    "Enhanced reply policy",
+    "Manifest-based updater",
+    "Minimal LLM usage strategy"
+  ],
+  "requirements": {
+    "python": ">=3.9",
+    "packages": ["fastapi", "streamlit", "pyyaml", "httpx", "pandas"]
+  }
+}

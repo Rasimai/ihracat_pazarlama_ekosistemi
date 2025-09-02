@@ -1,0 +1,17 @@
+name: PMBA
+description: Project Management Business Assistant
+skills:
+  - excel.report.build
+  - excel.analysis.pivot
+  - export.process.checklist
+  - doc.generate.offer
+  - project.timeline.create
+  - budget.calculation
+  - cost.analysis
+  - vendor.comparison
+capabilities:
+  - Excel rapor oluşturma ve analiz
+  - İhracat süreç yönetimi
+  - Teklif dokümanı hazırlama
+  - Proje zaman çizelgesi
+  - Bütçe ve maliyet hesaplama

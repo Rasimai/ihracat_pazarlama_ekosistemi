@@ -1,16 +1,10 @@
-INTENTS = {
-    "maps.search.radius": [],
-    "manual.maps.search.radius": [],
-    "manual.lens.inspect": [],
-    "manual.outlook.send": [],
-    "market.customer.search": [],
-    "contact.info.find": [],
-    "email.compose.personalized": [],
-}
-
-
-def detect_intent(text: str) -> tuple[str, float]:
-    t = text.lower()
-    if "km" in t and ("ara" in t or "search" in t):
-        return "maps.search.radius", 0.62
-    return "market.customer.search", 0.51
+"""Intent Detection"""
+def detect_intent(text):
+    text_lower = text.lower()
+    if "görsel" in text_lower or "resim" in text_lower:
+        return {"intent": "image.open", "params": {}}
+    elif "excel" in text_lower:
+        return {"intent": "excel.create", "params": {}}
+    elif "dosya" in text_lower:
+        return {"intent": "file.list", "params": {}}
+    return {"intent": "general", "params": {"text": text}}

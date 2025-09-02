@@ -1,0 +1,16 @@
+name: IKBA
+description: HR & People Management Assistant
+skills:
+  - hr.employee.onboarding
+  - hr.leave.management
+  - hr.performance.review
+  - hr.training.schedule
+  - hr.recruitment.tracking
+  - team.task.assignment
+  - workforce.planning
+capabilities:
+  - Çalışan yönetimi
+  - İzin takibi
+  - Performans değerlendirme
+  - Eğitim planlaması
+  - İşe alım süreci

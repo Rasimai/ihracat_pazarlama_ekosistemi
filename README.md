@@ -1,21 +1,34 @@
-[![CI](https://github.com/Rasimai/ihracat_pazarlama_ekosistemi/actions/workflows/ci.yml/badge.svg)](https://github.com/Rasimai/ihracat_pazarlama_ekosistemi/actions/workflows/ci.yml)
+# İhracat Pazarlama Ekosistemi
 
-![CI](https://github.com/Rasimai/ihracat_pazarlama_ekosistemi/actions/workflows/ci.yml/badge.svg)
+## Jarvis Orchestrator Sistemi
 
-# ihracat_pazarlama_ekosistemi (ipe)
-Yerel-öncelikli Jarvis orchestrator; PMBA/IKBA/İKA/RA alt asistanları; manuel düşük maliyet modları; Mentor (Artis) yükseltmesi.
+### Kurulum
 
-## Hızlı Başlangıç
-cp .env.example .env
-docker compose up -d --build
-# UI: http://localhost:8501
-# API: http://localhost:8000
-# MailHog: http://localhost:8025
-- smoke test
-- smoke test
+1. Gereksinimleri yükle:
+```bash
+pip install -r requirements.txt
+```
 
-artis/apply-20250901065352
-\n---\nArtis test satırı (otomatik PR + merge)
+2. FastAPI başlat:
+```bash
+uvicorn app.main:app --reload
+```
 
-Rasim
-main
+3. Streamlit UI başlat:
+```bash
+streamlit run apps/jarvis_ui.py
+```
+
+### Docker ile Çalıştırma
+
+```bash
+docker-compose up -d
+```
+
+### Özellikler
+
+- Jarvis Orchestrator
+- Alt Asistanlar (PMBA, IKBA, CIKTA)
+- FastAPI Backend
+- Streamlit Frontend
+- Docker Support

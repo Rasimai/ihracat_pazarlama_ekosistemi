@@ -1,0 +1,14 @@
+name: CIKTA
+description: Customer Relations & Output Assistant
+skills:
+  - customer.ticket.manage
+  - customer.feedback.analyze
+  - report.pdf.generate
+  - report.word.create
+  - output.format.package
+  - customer.communication.draft
+capabilities:
+  - Müşteri ilişkileri yönetimi
+  - PDF/Word rapor oluşturma
+  - Müşteri geri bildirim analizi
+  - İletişim taslakları

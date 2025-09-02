@@ -1,28 +1,41 @@
 #!/usr/bin/env python3
-# enhanced_system_launcher.py - Hybrid sistem başlatıcısı
+# enhanced_system_launcher.py - Auto-update destekli launcher
 import subprocess
 import time
 import sys
 import os
 from pathlib import Path
 
-def print_banner():
-    print("="*60)
-    print("🚀 JARVIS HYBRID ENHANCED SYSTEM")
-    print("Mevcut Sistem + Enhanced Features")
-    print("="*60)
+def check_auto_update():
+    """Başlatmadan önce güncelleme kontrolü"""
+    try:
+        from enhanced_integration.core.auto_updater import auto_updater
+        
+        if auto_updater.check_for_updates():
+            print("🔄 Updates found! Updating system...")
+            if auto_updater.auto_update():
+                print("✅ System updated! Restarting...")
+                auto_updater.restart_system()
+        else:
+            print("✅ System is up to date")
+            
+    except Exception as e:
+        print(f"⚠️ Auto-update check failed: {e}")
 
 def start_services():
-    """Tüm servisleri başlat"""
-    print_banner()
+    """Hybrid sistem servisleri"""
+    print("="*60)
+    print("🚀 JARVIS HYBRID ENHANCED SYSTEM v2.1")
+    print("Auto-Update Enabled | GitHub Synced")
+    print("="*60)
+    
+    # Auto-update kontrolü
+    check_auto_update()
     
     processes = []
     
-    # 1. Bridge API (Port 9999) - Mevcut sistem
-    print("🔗 Bridge API başlatılıyor (Port 9999)...")
-    
-    # 2. Enhanced API (Port 8007) - Yeni
-    print("⚡ Enhanced API başlatılıyor (Port 8007)...")
+    # Enhanced API (Port 8007)
+    print("⚡ Enhanced API starting (Port 8007)...")
     enhanced_api = subprocess.Popen([
         sys.executable, "-c", 
         "import uvicorn; import sys; sys.path.append('.'); "
@@ -32,8 +45,8 @@ def start_services():
     processes.append(enhanced_api)
     time.sleep(3)
     
-    # 3. Enhanced Dashboard (Port 8508) - Yeni
-    print("🖥️ Enhanced Dashboard başlatılıyor (Port 8508)...")
+    # Enhanced Dashboard (Port 8508)
+    print("🖥️ Enhanced Dashboard starting (Port 8508)...")
     enhanced_dashboard = subprocess.Popen([
         sys.executable, "-m", "streamlit", "run",
         "enhanced_integration/apps/enhanced_dashboard.py",
@@ -44,24 +57,25 @@ def start_services():
     time.sleep(3)
     
     print("\n" + "="*60)
-    print("🎉 HYBRID SYSTEM BAŞLATILDI!")
+    print("🎉 HYBRID SYSTEM READY!")
     print("="*60)
-    print("🔗 Bridge API (Mevcut): http://localhost:9999")
-    print("🌐 Jarvis API (Mevcut): http://localhost:8005")  
-    print("🖥️ Streamlit (Mevcut): http://localhost:8506")
+    print("🔗 Bridge API (Existing): http://localhost:9999")
+    print("🌐 Jarvis API (Existing): http://localhost:8005")
+    print("🖥️ Streamlit (Existing): http://localhost:8506") 
     print("⚡ Enhanced API: http://localhost:8007")
     print("🚀 Enhanced Dashboard: http://localhost:8508")
+    print("📚 Enhanced API Docs: http://localhost:8007/docs")
     print("="*60)
-    print("Durdurmak için Ctrl+C basın")
+    print("Press Ctrl+C to stop")
     
     try:
         while True:
-            time.sleep(1)
+            time.sleep(30)  # Her 30 saniyede health check
     except KeyboardInterrupt:
-        print("\n🛑 Sistem kapatılıyor...")
+        print("\n🛑 Shutting down...")
         for process in processes:
             process.terminate()
-        print("✅ Hybrid sistem kapatıldı")
+        print("✅ Hybrid system stopped")
 
 if __name__ == "__main__":
     start_services()
